@@ -1,0 +1,10 @@
+[package]
+name = "donut"
+version = "0.1.0"
+authors = ["u0_a277"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+terminal_size = "0.1.13"
