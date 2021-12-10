@@ -1,5 +1,5 @@
+use std::time::Instant;
 use terminal_size::{terminal_size, Height, Width};
-use std::time::{Instant};
 
 fn main() {
     let theta_spacing = 0.005;
@@ -11,7 +11,7 @@ fn main() {
 
     let (screen_width, screen_height) =
         if let Some((Width(screen_width), Height(screen_height))) = terminal_size() {
-            (screen_width / 2, screen_height)
+            (screen_width / 4, screen_height)
         } else {
             (0, 0)
         };
@@ -33,6 +33,10 @@ fn main() {
     }
     let mut a: f64 = 0.0;
     let mut b: f64 = 0.0;
+
+    let mut output = vec![vec![' ' as u8; screen_height as usize]; screen_width as usize];
+    let mut z_buffer = vec![vec![0.0 as f64; screen_height as usize]; screen_width as usize];
+
     loop {
         if a.gt(&200.0) {
             break;
@@ -48,9 +52,17 @@ fn main() {
             r2,
             k2,
             k1,
+            &mut output,
+            &mut z_buffer,
         );
         a += 0.1;
         b += 0.2;
+        for i in output.iter_mut().flatten() {
+            *i = ' ' as u8
+        }
+        for i in z_buffer.iter_mut().flatten() {
+            *i = 0.0 as f64
+        }
     }
 }
 
@@ -65,6 +77,8 @@ fn render_frame(
     r2: f64,
     k2: f64,
     k1: f64,
+    output: &mut Vec<Vec<u8>>,
+    z_buffer: &mut Vec<Vec<f64>>,
 ) {
     let start_time_point = Instant::now();
 
@@ -72,9 +86,6 @@ fn render_frame(
     let sin_a = a.sin();
     let cos_b = b.cos();
     let sin_b = b.sin();
-
-    let mut output = vec![vec![' '; screen_height as usize]; screen_width as usize];
-    let mut z_buffer = vec![vec![0.0 as f64; screen_height as usize]; screen_width as usize];
 
     // theta goes around the cross-sectional circle of a torus
     let mut theta: f64 = 0.0;
@@ -132,7 +143,7 @@ fn render_frame(
                     // luminance_index is now in the range 0..11 (8*sqrt(2) = 11.3)
                     // now we lookup the character corresponding to the
                     // luminance and plot it in our output:
-                    output[xp][yp] = char::from(".,-~:;=!*#$@".as_bytes()[luminance_index]);
+                    output[xp][yp] = ".,-~:;=!*#$@".as_bytes()[luminance_index];
                 }
             }
             phi += phi_spacing;
@@ -140,19 +151,18 @@ fn render_frame(
         theta += theta_spacing;
     }
 
+    // printing fps in top left corner
     let fps = 1 as f64 / start_time_point.elapsed().as_secs_f64();
     for (pos, char) in fps.to_string().bytes().take(5).enumerate() {
-        output[0][pos] = char::from(char);
-    };
+        output[0][pos] = char;
+    }
 
     // now, dump output[] to the screen.
     // bring cursor to "home" location, in just about any currently-used
     // terminal emulation mode
     print!("\x1b[H");
     for row in output.iter() {
-        for item in row.iter() {
-            print!("{}", item);
-        }
-        print!("\n");
+        let line = unsafe { std::str::from_utf8_unchecked(&row) };
+        println!("{}", line);
     }
 }
